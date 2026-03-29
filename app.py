@@ -108,11 +108,6 @@ def about():
     Renders the about page.
     """
     return render_template('about.html')
-        return jsonify({
-            "error": "Failed to fetch the details page", 
-            "details": str(e),
-            "traceback": traceback.format_exc()
-        }), 500
 
 @app.route('/api/campaigns', methods=['GET'])
 def get_campaigns():
