@@ -314,6 +314,11 @@ def get_reports():
             reports = []
             for row in result:
                 chart_data = row[2]
+
+                _config = chart_data.get( "_config" )
+                if _config:
+                    chart_data = _config
+                
                 if isinstance(chart_data, (str, bytes, bytearray)):
                     chart_data = json.loads(chart_data)
 
