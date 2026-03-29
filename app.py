@@ -64,322 +64,277 @@ def upload_to_gcs(file_bytes, filename):
 @app.route('/')
 def home():
     """
-    Fetches items and renders the app.html template with the item data.
+    Fetches dashboard data and renders the dashboard template.
     """
     if engine is None:
         return jsonify({"error": "Database engine not initialized."}), 500
 
     try:
         with engine.connect() as conn:
-            query = text("""
-                SELECT item_id, title, bio, category, image_url 
-                FROM items 
-                WHERE status = 'available'
-                ORDER BY created_at DESC
-                LIMIT 20
-            """)
-            result = conn.execute(query)
-            
-            items = []
-            for row in result:
-                items.append({
+            # Get total campaigns
+            campaign_query = text("SELECT COUNT(*) FROM campaigns")
+            total_campaigns = conn.execute(campaign_query).scalar()
+
+            # Get total leads
+            lead_query = text("SELECT COUNT(*) FROM leads")
+            total_leads = conn.execute(lead_query).scalar()
+
+            # Get recent reports
+            report_query = text("SELECT report_id, query, created_at FROM reports ORDER BY created_at DESC LIMIT 5")
+            reports_result = conn.execute(report_query)
+            recent_reports = []
+            for row in reports_result:
+                recent_reports.append({
                     "id": str(row[0]),
-                    "title": row[1],
-                    "bio": row[2],
-                    "category": row[3],
-                    "image_url": row[4]
+                    "query": row[1],
+                    "created_at": row[2].isoformat() if row[2] else None
                 })
-            
-            # For SELECT, commit isn't required but keeps the connection handling consistent
+
             conn.commit()
-            return render_template('app.html', items=items)
+            return render_template('app.html', total_campaigns=total_campaigns, total_leads=total_leads, recent_reports=recent_reports)
             
     except Exception as e:
-        print(f"Error fetching items: {traceback.format_exc()}")
+        print(f"Error fetching dashboard data: {traceback.format_exc()}")
         return jsonify({
-            "error": "Failed to fetch items", 
+            "error": "Failed to fetch dashboard data", 
             "details": str(e),
             "traceback": traceback.format_exc()
         }), 500
 
-@app.route('/api/items', methods=['GET'])
-def get_items():
+
+@app.route('/about')
+def about():
     """
-    Fetches available items from the database to populate the deck.
-    Standardized to use the same variable-based query execution as list_item.
+    Renders the about page.
+    """
+    return render_template('about.html')
+        return jsonify({
+            "error": "Failed to fetch the details page", 
+            "details": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
+
+@app.route('/api/campaigns', methods=['GET'])
+def get_campaigns():
+    """
+    Fetches campaigns from the database.
     """
     if engine is None:
         return jsonify({"error": "Database engine not initialized."}), 500
     try:
         with engine.connect() as conn:
             query = text("""
-                SELECT item_id, title, bio, category, image_url 
-                FROM items 
-                WHERE status = 'available'
-                ORDER BY created_at DESC
-                LIMIT 20
+                SELECT campaign_id, name, description, start_date, end_date, budget 
+                FROM campaigns 
+                ORDER BY start_date DESC
             """)
             result = conn.execute(query)
             
-            items = []
+            campaigns = []
             for row in result:
-                items.append({
+                campaigns.append({
                     "id": str(row[0]),
-                    "title": row[1],
-                    "bio": row[2],
-                    "category": row[3],
-                    "image_url": row[4]
+                    "name": row[1],
+                    "description": row[2],
+                    "start_date": row[3].isoformat() if row[3] else None,
+                    "end_date": row[4].isoformat() if row[4] else None,
+                    "budget": float(row[5]) if row[5] else 0
                 })
             
-            # For SELECT, commit isn't required but keeps the connection handling consistent
             conn.commit()
-            return jsonify(items)
+            return jsonify(campaigns)
             
     except Exception as e:
-        print(f"Error fetching items: {traceback.format_exc()}")
+        print(f"Error fetching campaigns: {traceback.format_exc()}")
         return jsonify({
-            "error": "Failed to fetch items", 
+            "error": "Failed to fetch campaigns", 
             "details": str(e),
             "traceback": traceback.format_exc()
         }), 500
 
-@app.route('/api/list-item', methods=['POST'])
-def list_item():
+@app.route('/api/leads', methods=['GET'])
+def get_leads():
     """
-    Handles item listing with provider contact info and detailed error reporting.
+    Fetches leads from the database.
     """
     if engine is None:
         return jsonify({"error": "Database engine not initialized."}), 500
-
-    if 'image' not in request.files:
-        return jsonify({"error": "No image provided"}), 400
-    
-    provider_name = request.form.get('provider_name', 'Anonymous')
-    provider_phone = request.form.get('provider_phone', 'No Phone')
-    item_title = request.form.get('item_title', 'No Title') 
-    image_file = request.files['image']
-    image_bytes = image_file.read()
-
     try:
-        image_url = upload_to_gcs(image_bytes, image_file.filename)
+        with engine.connect() as conn:
+            query = text("""
+                SELECT l.lead_id, l.name, l.email, l.status, l.created_at, c.name as campaign_name
+                FROM leads l
+                JOIN campaigns c ON l.campaign_id = c.campaign_id
+                ORDER BY l.created_at DESC
+            """)
+            result = conn.execute(query)
+            
+            leads = []
+            for row in result:
+                leads.append({
+                    "id": str(row[0]),
+                    "name": row[1],
+                    "email": row[2],
+                    "status": row[3],
+                    "created_at": row[4].isoformat() if row[4] else None,
+                    "campaign_name": row[5]
+                })
+            
+            conn.commit()
+            return jsonify(leads)
+            
     except Exception as e:
-        return jsonify({"error": "GCS Upload Failed", "details": str(e)}), 500
+        print(f"Error fetching leads: {traceback.format_exc()}")
+        return jsonify({
+            "error": "Failed to fetch leads", 
+            "details": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
 
-    prompt = """
-    You are a witty community manager for NeighborLoop. 
-    Analyze this surplus item and return JSON:
-    {
-        "bio": "First-person witty dating-style profile bio, for the product, not longer than 2 lines",
-        "category": "One-word category",
-        "tags": ["tag1", "tag2"]
-    }
+
+@app.route('/api/generate-chart', methods=['POST'])
+def generate_chart():
     """
-    
+    Generates a chart based on user query using Gemini AI.
+    """
+    if engine is None or genai_client is None:
+        return jsonify({"error": "Services not initialized."}), 500
+
+    data = request.json
+    query = data.get('query')
+    if not query:
+        return jsonify({"error": "Query is required"}), 400
+
     try:
+        # Fetch data from DB
+        with engine.connect() as conn:
+            campaigns_query = text("SELECT name, description, budget FROM campaigns")
+            campaigns = conn.execute(campaigns_query).fetchall()
+
+            leads_query = text("SELECT l.name, l.email, l.status, c.name as campaign FROM leads l JOIN campaigns c ON l.campaign_id = c.campaign_id")
+            leads = conn.execute(leads_query).fetchall()
+
+        # Prepare data for Gemini
+        data_summary = {
+            "campaigns": [{"name": c[0], "description": c[1], "budget": float(c[2])} for c in campaigns],
+            "leads": [{"name": l[0], "email": l[1], "status": l[2], "campaign": l[3]} for l in leads]
+        }
+
+        prompt = f"""
+        You are a marketing analytics AI. Analyze the following data and generate a Chart.js compatible chart configuration based on the user's query: "{query}"
+
+        Data:
+        {json.dumps(data_summary)}
+
+        Return JSON in this format:
+        {{
+            "type": "bar|line|pie|doughnut",
+            "data": {{
+                "labels": ["label1", "label2"],
+                "datasets": [{{
+                    "label": "Dataset Label",
+                    "data": [1, 2, 3]
+                }}]
+            }},
+            "options": {{
+                "responsive": true,
+                "plugins": {{
+                    "title": {{
+                        "display": true,
+                        "text": "Chart Title"
+                    }}
+                }}
+            }}
+        }}
+        """
+
         response = genai_client.models.generate_content(
             model="gemini-3-flash-preview",
-            contents=[
-                types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
-                prompt
-            ],
+            contents=prompt,
             config=types.GenerateContentConfig(response_mime_type="application/json")
         )
-        profile = json.loads(response.text)
-        
-        generated_owner_id = str(uuid.uuid4())
-        
-        with engine.connect() as conn:
-            query = text("""
-                INSERT INTO items (owner_id, provider_name, provider_phone, title, bio, category, image_url, status, item_vector)
-                VALUES (:owner, :name, :phone, :title, :bio, :cat, :url, 'available', embedding('text-embedding-005', :title || ' ' || :bio)::vector) 
-                RETURNING item_id
-            """)
-            result = conn.execute(query, {
-                "owner": generated_owner_id, 
-                "name": provider_name,
-                "phone": provider_phone,
-                #"title": profile.get('title', 'Mystery Item'),
-                "title": item_title,
-                "bio": profile.get('bio', 'No bio provided.'),
-                "cat": profile.get('category', 'Misc'),
-                "url": image_url
-            })
-            item_id = result.fetchone()[0]
-            conn.commit()
+        chart_config = json.loads(response.text)
 
-        return jsonify({
-            "status": "success",
-            "item_id": str(item_id),
-            "image_url": image_url,
-            "profile": profile
-        })
+        return jsonify({"chart": chart_config})
 
     except Exception as e:
-        print(f"Error during item listing: {traceback.format_exc()}")
+        print(f"Error generating chart: {traceback.format_exc()}")
         return jsonify({
-            "error": "Operation Failed", 
+            "error": "Failed to generate chart", 
             "details": str(e),
             "traceback": traceback.format_exc()
         }), 500
 
 
-@app.route('/api/search', methods=['GET'])
-def search():
-    """Performs semantic vector search using pgvector."""
-    if engine is None:
-        return jsonify({"error": "Database engine not initialized."}), 500
-
-    query_text = request.args.get('query') # Get the 'query' parameter from the URL
-    #data = request.json
-    #query_text = data.get('query')
-    if not query_text:
-        return jsonify([])
-
-    # Generate vector for the search query
-    '''
-    query_vector = generate_embedding(query_text)
-    if not query_vector:
-        return jsonify({"error": "Failed to generate search embedding"}), 500
-    '''
-    try:
-        with engine.connect() as conn:
-            print(f"Searching for: {query_text}") # Log the query
-
-            # Using Cosine Distance (<=>) for similarity
-            # 1 - distance = similarity score
-            search_sql = text("""
-                SELECT item_id, title, bio, category, image_url, 1 - (item_vector <=> embedding('text-embedding-005', :query)::vector) as score
-                FROM items 
-                WHERE status = 'available' AND item_vector IS NOT NULL and 
-                ai.if(
-                    prompt => 'Does this text: "' || bio ||'" match the user request: "' ||  :query || '", at least 60%? " ',
-                    model_id => 'gemini-3-flash-preview')  
-                ORDER BY item_vector <=> embedding('text-embedding-005', :query)::vector
-                LIMIT 5
-            """)
-            result = conn.execute(search_sql, {"query": query_text})
-            
-            hits = []
-            for row in result:
-                hits.append({
-                    "id": str(row[0]),
-                    "title": row[1],
-                    "bio": row[2],
-                    "category": row[3],
-                    "image_url": row[4],
-                    "score": round(float(row[5]), 3)
-                })
-            return jsonify(hits)
-    except Exception as e:
-        print(f"Error during search: {traceback.format_exc()}")
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route('/api/swipe', methods=['POST'])
-def handle_swipe():
+@app.route('/api/save-report', methods=['POST'])
+def save_report():
     """
-    Records swipe in the 'swipes' table. 
-    If right swipe, updates item status and returns provider info.
+    Saves a generated report.
     """
     if engine is None:
         return jsonify({"error": "Database engine not initialized."}), 500
 
     data = request.json
-    direction = data.get('direction')
-    item_id = data.get('item_id')
-    # Generate a dummy swiper_id since we don't have login yet
-    swiper_id = str(uuid.uuid4()) 
-
-    if not item_id or direction not in ['left', 'right']:
-        return jsonify({"error": "Invalid swipe data"}), 400
+    query = data.get('query')
+    chart_data = data.get('chart_data')
+    if not query or not chart_data:
+        return jsonify({"error": "Query and chart_data are required"}), 400
 
     try:
         with engine.connect() as conn:
-            is_match = (direction == 'right')
-            
-            # 1. Record the swipe
-            swipe_query = text("""
-                INSERT INTO swipes (swiper_id, item_id, direction, is_match)
-                VALUES (:swiper, :item, :dir, :match)
+            insert_query = text("""
+                INSERT INTO reports (query, chart_data)
+                VALUES (:query, :chart_data)
+                RETURNING report_id
             """)
-            conn.execute(swipe_query, {
-                "swiper": swiper_id,
-                "item": item_id,
-                "dir": direction,
-                "match": is_match
+            result = conn.execute(insert_query, {
+                "query": query,
+                "chart_data": json.dumps(chart_data)
             })
-
-            # 2. If it's a match, get provider info and mark item as 'matched'
-            if is_match:
-                # Fetch provider info
-                info_query = text("SELECT provider_name, provider_phone FROM items WHERE item_id = :id")
-                res = conn.execute(info_query, {"id": item_id}).fetchone()
-                
-                # Update status to remove from deck
-                update_query = text("UPDATE items SET status = 'matched' WHERE item_id = :id")
-                conn.execute(update_query, {"id": item_id})
-                
-                conn.commit()
-                
-                if res:
-                    return jsonify({
-                        "is_match": True,
-                        "provider_name": res[0],
-                        "provider_phone": res[1],
-                        "swiper_id": swiper_id
-                    })
-            
+            report_id = result.fetchone()[0]
             conn.commit()
-            return jsonify({"is_match": False,
-                "swiper_id": swiper_id
-                })
+
+        return jsonify({"status": "success", "report_id": str(report_id)})
 
     except Exception as e:
-        print(f"Swipe error: {traceback.format_exc()}")
+        print(f"Error saving report: {traceback.format_exc()}")
         return jsonify({
-            "error": "Database error during swipe", 
+            "error": "Failed to save report", 
             "details": str(e),
             "traceback": traceback.format_exc()
         }), 500
 
-@app.route('/api/matches', methods=['GET'])
-def get_matches():
+@app.route('/api/reports', methods=['GET'])
+def get_reports():
     """
-    Returns a list of matches for a given swiper_id.  This is currently NOT USED.
+    Fetches saved reports.
     """
     if engine is None:
         return jsonify({"error": "Database engine not initialized."}), 500
-
-    swiper_id = request.args.get('swiper_id')
-
-    if not swiper_id:
-        return jsonify({"error": "swiper_id is required"}), 400
-
     try:
         with engine.connect() as conn:
-            query = text("""
-                SELECT s.item_id, i.title, i.image_url, i.provider_name, i.provider_phone
-                FROM swipes s
-                JOIN items i ON s.item_id = i.item_id
-                WHERE s.swiper_id = :swiper AND s.is_match = true AND i.status = 'matched'
-            """)
-            result = conn.execute(query, {"swiper": swiper_id})
-
-            matches = []
+            query = text("SELECT report_id, query, chart_data, created_at FROM reports ORDER BY created_at DESC")
+            result = conn.execute(query)
+            
+            reports = []
             for row in result:
-                matches.append({
-                    "item_id": row[0],
-                    "item_title": row[1],
-                    "item_image_url": row[2],
-                    "provider_name": row[3],
-                    "provider_phone": row[4]
+                reports.append({
+                    "id": str(row[0]),
+                    "query": row[1],
+                    "chart_data": json.loads(row[2]),
+                    "created_at": row[3].isoformat() if row[3] else None
                 })
-
-            return jsonify(matches)
-
+            
+            conn.commit()
+            return jsonify(reports)
+            
     except Exception as e:
-        print(f"Error fetching matches: {traceback.format_exc()}")
-        return jsonify({"error": str(e)}), 500
+        print(f"Error fetching reports: {traceback.format_exc()}")
+        return jsonify({
+            "error": "Failed to fetch reports", 
+            "details": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
 
 
 

@@ -19,432 +19,179 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NeighborLoop: Swipe for Sustainability</title>
+    <title>Smartech Analytics</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <style>
-        .swipe-card {
-            transition: transform 0.3s ease, opacity 0.3s ease;
-            cursor: grab;
-        }
-        .swipe-card:active {
-            cursor: grabbing;
-        }
-        .swipe-right {
-            transform: translateX(200%) rotate(30deg);
-            opacity: 0;
-        }
-        .swipe-left {
-            transform: translateX(-200%) rotate(-30deg);
-            opacity: 0;
+        .chart-container {
+            position: relative;
+            height: 400px;
         }
     </style>
 </head>
-<body class="bg-gray-50 font-sans min-h-screen flex flex-col">
+<body class="bg-gray-50 font-sans">
 
     <!-- Header -->
-    <header class="bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-50">
-        <h1 class="text-2xl font-bold text-green-600 flex items-center gap-2">
-            <i data-lucide="refresh-cw"></i> NeighborLoop
-        </h1>
-        <div class="flex gap-4">
-            <button onclick="showSection('search')" class="p-2 hover:bg-gray-100 rounded-full">
-                <i data-lucide="search"></i>
-            </button>
-            <button onclick="showSection('upload')" class="p-2 hover:bg-gray-100 rounded-full">
-                <i data-lucide="plus-circle"></i>
-            </button>
+    <header class="bg-white shadow-sm p-4">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-blue-600 flex items-center gap-2">
+                <i data-lucide="bar-chart-3"></i> Smartech Analytics
+            </h1>
+            <nav class="flex gap-4">
+                <a href="/" class="text-blue-600 font-semibold">Dashboard</a>
+                <a href="/about" class="text-gray-600 hover:text-blue-600 transition">About</a>
+            </nav>
         </div>
     </header>
 
-    <main class="flex-grow flex flex-col items-center justify-center p-4">
-        
-        <!-- Deck Section -->
-        <div id="deck-section" class="w-full max-w-md relative h-[600px]">
-            <div id="card-container" class="relative w-full h-full">
-                <div class="flex flex-col items-center justify-center h-full text-gray-400">
-                    <i data-lucide="loader" class="animate-spin mb-2"></i>
-                    <p>Loading the Loop...</p>
-                </div>
+    <main class="p-4 max-w-6xl mx-auto">
+
+        <!-- Dashboard Overview -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold text-gray-700">Total Campaigns</h3>
+                <p class="text-3xl font-bold text-blue-600" id="total-campaigns">{{ total_campaigns }}</p>
             </div>
-            <div class="absolute bottom-4 left-0 right-0 flex justify-center gap-8 px-4">
-                <button onclick="swipe('left')" class="bg-white p-4 rounded-full shadow-lg text-red-500 hover:scale-110 transition">
-                    <i data-lucide="x" class="w-8 h-8"></i>
-                </button>
-                <button onclick="swipe('right')" class="bg-white p-4 rounded-full shadow-lg text-green-500 hover:scale-110 transition">
-                    <i data-lucide="heart" class="w-8 h-8"></i>
-                </button>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold text-gray-700">Total Leads</h3>
+                <p class="text-3xl font-bold text-green-600" id="total-leads">{{ total_leads }}</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold text-gray-700">Saved Reports</h3>
+                <p class="text-3xl font-bold text-purple-600" id="total-reports">{{ recent_reports|length }}</p>
             </div>
         </div>
 
-        <!-- Search Section -->
-        <div id="search-section" class="hidden w-full max-w-md">
-            <div class="bg-white p-6 rounded-2xl shadow-xl border border-gray-100">
-                <h2 class="text-xl font-bold mb-2">Semantic Discovery</h2>
-                <div class="flex gap-2">
-                    <input type="text" id="search-input" placeholder="Search the Loop..." class="flex-grow p-3 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none">
-                    <button id="search-btn" onclick="handleSearch()" class="bg-green-600 text-white p-3 rounded-xl hover:bg-green-700">
-                        <i data-lucide="arrow-right"></i>
-                    </button>
-                </div>
-                <div id="search-results" class="mt-6 space-y-4 max-h-[400px] overflow-y-auto"></div>
-            </div>
-        </div>
-
-        <!-- Upload Section -->
-        <div id="upload-section" class="hidden w-full max-w-md">
-            <div class="bg-white p-6 rounded-2xl shadow-xl border border-gray-100">
-                <h2 class="text-xl font-bold mb-4">Add to the Loop</h2>
-                
-                <div class="space-y-4 mb-6">
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 mb-1 uppercase">Your Name</label>
-                        <input type="text" id="provider-name" placeholder="e.g. Alex" class="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-green-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 mb-1 uppercase">Phone Number (with Country Code)</label>
-                        <input type="text" id="provider-phone" placeholder="+1234567890" class="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-green-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 mb-1 uppercase">Item</label>
-                        <input type="text" id="item-title" name="title" placeholder="e.g. Vintage Lamp" class="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-green-500" required>
-                    </div>
-                </div>
-
-                <div class="border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center cursor-pointer hover:border-green-500 transition mb-4" id="drop-zone">
-                    <i data-lucide="camera" class="w-12 h-12 mx-auto text-gray-400 mb-2"></i>
-                    <p class="text-sm text-gray-500" id="drop-text">Snap a photo of your surplus</p>
-                    <input type="file" id="file-input" class="hidden" accept="image/*" capture="environment">
-                </div>
-                
-                <div id="upload-status" class="hidden p-3 bg-green-50 text-green-700 rounded-xl mb-4 text-sm flex items-center gap-2">
-                    <i data-lucide="loader" class="animate-spin w-4 h-4"></i>
-                    NeighborLoop is crafting your listing...
-                </div>
-                
-                <button id="upload-btn" onclick="handleUpload()" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700">
-                    Upload & Auto-Generate
+        <!-- Query Input -->
+        <div class="bg-white p-6 rounded-lg shadow mb-8">
+            <h2 class="text-xl font-bold mb-4">Generate Report</h2>
+            <div class="flex gap-4">
+                <input type="text" id="query-input" placeholder="e.g., Show leads by campaign status" class="flex-grow p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                <button id="generate-btn" onclick="generateChart()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">
+                    Generate Chart
                 </button>
             </div>
+            <div id="loading" class="hidden mt-4 text-center">
+                <i data-lucide="loader" class="animate-spin inline"></i> Generating chart...
+            </div>
         </div>
+
+        <!-- Chart Display -->
+        <div id="chart-section" class="bg-white p-6 rounded-lg shadow mb-8 hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">Generated Chart</h2>
+                <button id="save-btn" onclick="saveReport()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                    Save Report
+                </button>
+            </div>
+            <div class="chart-container">
+                <canvas id="chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Recent Reports -->
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h2 class="text-xl font-bold mb-4">Recent Reports</h2>
+            <div id="reports-list" class="space-y-4">
+                {% for report in recent_reports %}
+                <div class="border rounded-lg p-4">
+                    <h3 class="font-semibold">{{ report.query }}</h3>
+                    <p class="text-sm text-gray-500">{{ report.created_at }}</p>
+                    <button onclick="loadReport('{{ report.id }}')" class="mt-2 text-blue-600 hover:underline">View Chart</button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
     </main>
 
-    <!-- Match Modal -->
-    <div id="match-modal" class="fixed inset-0 bg-black/60 hidden z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center scale-95 transition-transform" id="modal-content">
-            <div class="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i data-lucide="heart" class="w-10 h-10 fill-current"></i>
-            </div>
-            <h2 class="text-2xl font-bold text-gray-800">It's a Match!</h2>
-            <p class="text-gray-600 mt-2 mb-4">Great news! You can collect this item from:</p>
-            
-            <div class="bg-gray-50 rounded-2xl p-4 mb-6 text-left">
-                <p class="text-sm font-bold text-gray-400 uppercase">Provider</p>
-                <p id="match-name" class="text-lg font-bold text-gray-800">-</p>
-                <p class="text-sm font-bold text-gray-400 uppercase mt-3">Contact</p>
-                <a id="match-phone-link" href="#" class="text-green-600 text-lg font-bold flex items-center gap-2">
-                    <i data-lucide="phone" class="w-4 h-4"></i>
-                    <span id="match-phone">-</span>
-                </a>
-            </div>
-
-            <button onclick="closeMatch()" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold">Back to Swiping</button>
-        </div>
-    </div>
-
-    <nav class="bg-white border-t p-4 flex justify-around items-center">
-        <button onclick="showSection('deck')" class="flex flex-col items-center text-green-600">
-            <i data-lucide="layers"></i><span class="text-xs">Deck</span>
-        </button>
-        <button onclick="showSection('search')" class="flex flex-col items-center text-gray-400">
-            <i data-lucide="compass"></i><span class="text-xs">Discover</span>
-        </button>
-        
-
-        <button onclick="showMatches()" class="flex flex-col items-center text-gray-400">
-            <i data-lucide="message-circle"></i><span class="text-xs">Matches</span>
-        </button>
-        
-    </nav>
-
-    <!-- Matches Section -->
-<div id="matches-section" class="hidden w-full max-w-md">
-    <div class="bg-white p-6 rounded-2xl shadow-xl border border-gray-100">
-        <h2 class="text-xl font-bold mb-4">Recent Matches</h2>
-        <ul id="matches-list" class="space-y-4">
-            <!-- Matches will be dynamically inserted here -->
-        </ul>
-    </div>
-</div>
-
-
-<script>
-    lucide.createIcons();
-
-    let items = {{ items | tojson }};
-    let idx = 0;
-    let cameFromSearch = false; // Flag to track if deck was populated by search
-
-    function showSection(s) {
-        ['deck-section', 'search-section', 'upload-section', 'matches-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
-        document.getElementById(s + '-section').classList.remove('hidden');
-
-        if (s === 'deck' && !cameFromSearch) {
-            refreshDeck();
-        }
-
-        if (s === 'search') {
-            document.getElementById('search-input').value = ''; // Clear the search input box
-            document.getElementById('search-results').innerHTML = ''; // Clear search results message
-
-        }
-
-        cameFromSearch = false; // Reset flag when leaving the search
-    }
-
-
-    async function refreshDeck() {
-        const cardContainer = document.getElementById('card-container');
-        cardContainer.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-400">
-                <i data-lucide="loader" class="animate-spin mb-2"></i>
-                <p>Refreshing the Loop...</p>
-            </div>`;
-
-        try {
-            const response = await fetch('/api/items'); // Use the existing /api/items endpoint
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            items = await response.json();
-            idx = 0; // Reset index after refreshing data
-            render();
-        } catch (error) {
-            console.error("Failed to refresh deck:", error);
-            cardContainer.innerHTML = `<div class="text-red-500 text-center py-10 text-sm">Failed to refresh deck: ${error.message}</div>`;
-        } finally {
-            lucide.createIcons();
-        }
-    }
-
-    function render() {
-        const c = document.getElementById('card-container');
-        if (idx >= items.length) {
-            c.innerHTML = `<div class='p-8 text-center bg-white rounded-2xl shadow border h-full flex flex-col justify-center items-center'><h3 class='font-bold text-xl mb-2'>End of the Loop!</h3><p class='text-gray-500'>Check back soon!</p></div>`;
-            return;
-        }
-        const i = items[idx];
-        c.innerHTML = `
-            <div class="swipe-card absolute inset-0 bg-white rounded-2xl shadow-xl overflow-hidden border flex flex-col" id="active-card">
-                <img src="${i.image_url}" class="h-2/3 object-cover w-full">
-                <div class="p-6">
-                    <span class="text-xs font-bold text-green-600 uppercase tracking-wider">${i.category}</span>
-                    <h3 class="text-2xl font-bold mt-1">${i.title}</h3>
-                    <p class="text-gray-600 mt-2 italic">"${i.bio}"</p>
-                </div>
-            </div>`;
+    <script>
         lucide.createIcons();
-    }
 
-    async function swipe(d) {
-        const card = document.getElementById('active-card');
-        if (!card) return;
-        card.classList.add(d === 'right' ? 'swipe-right' : 'swipe-left');
+        let currentChart = null;
+        let currentQuery = '';
 
-        const currentItem = items[idx];
+        async function generateChart() {
+            const query = document.getElementById('query-input').value;
+            if (!query) return;
 
-        if (d === 'right') {
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('generate-btn').disabled = true;
+
             try {
-                const response = await fetch('/api/swipe', {
+                const response = await fetch('/api/generate-chart', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        direction: d,
-                        item_id: currentItem.id
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
                 });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
-
                 const data = await response.json();
 
-                // Store swipe data in local storage ONLY IF IT'S A MATCH
-                if (data.is_match) {
-                    let matches = JSON.parse(localStorage.getItem('matches') || '[]'); // Get current matches
-                    matches.push({
-                        swiper_id: data.swiper_id,
-                        item_id: currentItem.id,
-                        direction: d,
-                        is_match: true,
-                        item_title: currentItem.title,
-                        item_image_url: currentItem.image_url,
-                        provider_name: data.provider_name,
-                        provider_phone: data.provider_phone
-                    });
-                    localStorage.setItem('matches', JSON.stringify(matches));
-                    showMatchModal(data.provider_name, data.provider_phone);
+                if (data.chart) {
+                    currentQuery = query;
+                    renderChart(data.chart);
+                    document.getElementById('chart-section').classList.remove('hidden');
+                } else {
+                    alert('Failed to generate chart: ' + (data.error || 'Unknown error'));
                 }
-                // If data.is_match is false, DO NOTHING. Don't store it.
-
             } catch (error) {
-                console.error("Swipe failed:", error);
-                // Handle error (e.g., display an error message)
+                console.error('Error:', error);
+                alert('Error generating chart');
             } finally {
-                idx++;
-                render();
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('generate-btn').disabled = false;
             }
-        } else {
-            //LEFT SWIPE - DO NOTHING.
+        }
+
+        function renderChart(config) {
+            const ctx = document.getElementById('chart').getContext('2d');
+            if (currentChart) {
+                currentChart.destroy();
+            }
+            currentChart = new Chart(ctx, config);
+        }
+
+        async function saveReport() {
+            if (!currentQuery || !currentChart) return;
+
             try {
-                const response = await fetch('/api/swipe', {
+                const response = await fetch('/api/save-report', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        direction: d,
-                        item_id: currentItem.id
+                        query: currentQuery,
+                        chart_data: currentChart.config
                     })
                 });
-
+                const data = await response.json();
+                if (data.status === 'success') {
+                    alert('Report saved successfully!');
+                    location.reload(); // Refresh to show new report
+                } else {
+                    alert('Failed to save report: ' + (data.error || 'Unknown error'));
+                }
             } catch (error) {
-                console.error("Swipe failed:", error);
-                // Handle error (e.g., display an error message)
-            } finally {
-                idx++;
-                render();
+                console.error('Error:', error);
+                alert('Error saving report');
             }
         }
-    }
 
-    function showMatches() {
-        showSection('matches');
-
-        let matches = JSON.parse(localStorage.getItem('matches') || '[]');
-
-        const matchesContainer = document.getElementById('matches-list');
-
-        if (matches.length === 0) {
-            matchesContainer.innerHTML = '<p class="text-gray-500">No matches yet.</p>';
-            return;
-        }
-
-        // Use grid layout for tiles
-        matchesContainer.classList.add('grid', 'grid-cols-1', 'sm:grid-cols-2', 'md:grid-cols-3', 'gap-4'); // Added grid classes
-        matchesContainer.innerHTML = matches.map(match => `
-            <li class="bg-white rounded-2xl shadow-md p-4 flex flex-col items-center gap-4"> <!-- Changed flex direction to column -->
-                <img src="${match.item_image_url}" class="w-full h-32 rounded-xl object-cover"> <!-- Made image responsive and constrained height -->
-                <div align="center" class="text-center">
-                    <h3 class="font-bold text-center">${match.item_title}</h3> <!-- Centered title -->
-                    <p class="text-green-600 text-center">Contact: ${match.provider_name}</p> <!-- Centered contact info -->
-                    <a href="tel:${match.provider_phone}" class="text-blue-600 text-center block mt-2">${match.provider_phone}</a>
-                </div>
-            </li>
-        `).join('');
-    }
-
-    function showMatchModal(name, phone) {
-        document.getElementById('match-name').innerText = name;
-        document.getElementById('match-phone').innerText = phone;
-        document.getElementById('match-phone-link').href = `tel:${phone}`;
-        document.getElementById('match-modal').classList.remove('hidden');
-        setTimeout(() => document.getElementById('modal-content').classList.remove('scale-95'), 10);
-    }
-
-    function closeMatch() {
-        document.getElementById('match-modal').classList.add('hidden');
-        document.getElementById('modal-content').classList.add('scale-95');
-    }
-
-    // Upload
-    const dropZone = document.getElementById('drop-zone');
-    const fileInput = document.getElementById('file-input');
-    dropZone.onclick = () => fileInput.click();
-    fileInput.onchange = (e) => {
-        if (e.target.files.length > 0) document.getElementById('drop-text').innerText = "Image Ready: " + e.target.files[0].name;
-    };
-
-    async function handleSearch() {
-        const query = document.getElementById('search-input').value;
-        const resDiv = document.getElementById('search-results');
-        const searchButton = document.getElementById('search-btn');
-
-        if (!query) return;
-
-        resDiv.innerHTML = `<div class="flex justify-center py-10"><i data-lucide="loader" class="animate-spin text-green-500"></i></div>`;
-        lucide.createIcons();
-        searchButton.disabled = true;
-
-        try {
-            const response = await fetch(`/api/search?query=${query}`, { // Pass query as URL parameter
-                method: 'GET', // Use GET request since we're sending data in the URL
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`); // Improved error handling
+        async function loadReport(reportId) {
+            try {
+                const response = await fetch('/api/reports');
+                const reports = await response.json();
+                const report = reports.find(r => r.id === reportId);
+                if (report) {
+                    currentQuery = report.query;
+                    renderChart(report.chart_data);
+                    document.getElementById('chart-section').classList.remove('hidden');
+                    document.getElementById('query-input').value = report.query;
+                }
+            } catch (error) {
+                console.error('Error loading report:', error);
             }
-
-            const hits = await response.json();
-
-            if (hits.length === 0) {
-                resDiv.innerHTML = `<div class="text-center py-10 text-gray-400">No semantic matches found...</div>`;
-                items = []; // Clear deck if no results found
-            } else {
-                items = hits; // Replace the existing `items` with search results
-                resDiv.innerHTML = `<div class="text-center py-10 text-gray-400">${hits.length} item(s) found</div>`;
-            }
-
-            idx = 0; // Reset index
-            render(); // Re-render the deck
-            showSection('deck'); // Show the deck
-            cameFromSearch = true; // Set flag that deck was populated by search
-        } catch (err) {
-            console.error("Search failed:", err); // Log the error
-            resDiv.innerHTML = `<div class="text-red-500 text-center py-10 text-sm">Search failed: ${err.message}</div>`;
-        } finally {
-            searchButton.disabled = false;
-            lucide.createIcons();
         }
-    }
+    </script>
 
-    async function handleUpload() {
-        const file = fileInput.files[0];
-        const name = document.getElementById('provider-name').value;
-        const phone = document.getElementById('provider-phone').value;
-        const title = document.getElementById('item-title').value;
-
-        if (!file || !name || !phone) {
-            alert("Please provide your name, phone, and a photo!");
-            return;
-        }
-
-        const status = document.getElementById('upload-status');
-        status.classList.remove('hidden');
-
-        const formData = new FormData();
-        formData.append('image', file);
-        formData.append('provider_name', name);
-        formData.append('provider_phone', phone);
-        formData.append('item_title', title);
-        try {
-            const response = await fetch('/api/list-item', { method: 'POST', body: formData });
-            const result = await response.json();
-            if (result.status === 'success') {
-                status.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> Success! Your surplus is in the Loop.`;
-            }
-        } catch (err) { status.innerHTML = "Upload failed."; }
-        lucide.createIcons();
-    }
-
-    // Initial render
-    render();
-
-</script>
-
-
-    
 </body>
 </html>
