@@ -313,10 +313,14 @@ def get_reports():
             
             reports = []
             for row in result:
+                chart_data = row[2]
+                if isinstance(chart_data, (str, bytes, bytearray)):
+                    chart_data = json.loads(chart_data)
+
                 reports.append({
                     "id": str(row[0]),
                     "query": row[1],
-                    "chart_data": json.loads(row[2]),
+                    "chart_data": chart_data,
                     "created_at": row[3].isoformat() if row[3] else None
                 })
             
